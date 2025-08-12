@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 
-from backend.app.services.data_service import DataService
+from backend.app.services.poi_service import POIService
 from backend.app.schemas.poi import POIFilters
 
 def test_data_loading():
@@ -15,7 +15,7 @@ def test_data_loading():
     print("🔍 Testing Data Loading...")
     
     csv_path = os.path.join(os.path.dirname(__file__), 'Bigbox Stores Metrics.csv')
-    service = DataService(csv_path)
+    service = POIService(csv_path)
     
     if service.df is None or service.df.empty:
         print("❌ Failed to load data")
@@ -29,7 +29,7 @@ def test_filtering():
     print("\n🔍 Testing Filtering...")
     
     csv_path = os.path.join(os.path.dirname(__file__), 'Bigbox Stores Metrics.csv')
-    service = DataService(csv_path)
+    service = POIService(csv_path)
     
     # Test basic filter
     filters = POIFilters(chain_name="Walmart")
@@ -50,7 +50,7 @@ def test_summary_stats():
     print("\n🔍 Testing Summary Statistics...")
     
     csv_path = os.path.join(os.path.dirname(__file__), 'Bigbox Stores Metrics.csv')
-    service = DataService(csv_path)
+    service = POIService(csv_path)
     
     filters = POIFilters()
     stats = service.get_summary_stats(filters)
@@ -68,7 +68,7 @@ def test_analytics():
     print("\n🔍 Testing Analytics...")
     
     csv_path = os.path.join(os.path.dirname(__file__), 'Bigbox Stores Metrics.csv')
-    service = DataService(csv_path)
+    service = POIService(csv_path)
     
     # Test chain performance
     chain_performance = service.get_chain_performance_analytics()
@@ -92,7 +92,7 @@ def test_export():
     print("\n🔍 Testing Export...")
     
     csv_path = os.path.join(os.path.dirname(__file__), 'Bigbox Stores Metrics.csv')
-    service = DataService(csv_path)
+    service = POIService(csv_path)
     
     filters = POIFilters(chain_name="Walmart")
     export_df = service.get_export_data(filters)
@@ -107,7 +107,7 @@ def test_autocomplete():
     print("\n🔍 Testing Autocomplete...")
     
     csv_path = os.path.join(os.path.dirname(__file__), 'Bigbox Stores Metrics.csv')
-    service = DataService(csv_path)
+    service = POIService(csv_path)
     
     suggestions = service.get_autocomplete_suggestions("Wal")
     print(f"✅ Autocomplete for 'Wal': {suggestions[:3]}...")

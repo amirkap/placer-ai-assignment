@@ -6,3 +6,5 @@ python-multipart==0.0.6
 cors==1.0.1
 fastapi-cors==0.0.6
 openpyxl==3.1.2
+sqlalchemy==2.0.23
+alembic==1.13.1

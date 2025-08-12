@@ -178,18 +178,13 @@ const Dashboard: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 0 && (
-          <Box>
-            <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
-              Point of Interest Data
-            </Typography>
-            
-            <POITable
-              data={poiData}
-              loading={loading}
-              onPageChange={handlePageChange}
-              onRowsPerPageChange={handleRowsPerPageChange}
-            />
-          </Box>
+          <POITable
+            data={poiData}
+            loading={loading}
+            onPageChange={handlePageChange}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            filters={filters}
+          />
         )}
 
         {activeTab === 1 && (

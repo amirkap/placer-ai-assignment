@@ -13,19 +13,23 @@ import {
   TablePagination,
   CircularProgress,
   Tooltip,
+  Button,
+  Alert,
 } from '@mui/material';
 import {
   CheckCircle as OpenIcon,
   Cancel as ClosedIcon,
   LocationOn as LocationIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
-import { POI, PaginatedPOIResponse } from '../types/poi';
+import { POI, PaginatedPOIResponse, Filters } from '../types/poi';
 
 interface POITableProps {
   data: PaginatedPOIResponse | null;
   loading: boolean;
   onPageChange: (page: number) => void;
   onRowsPerPageChange: (rowsPerPage: number) => void;
+  filters: Filters;
 }
 
 const POITable: React.FC<POITableProps> = ({
@@ -33,7 +37,9 @@ const POITable: React.FC<POITableProps> = ({
   loading,
   onPageChange,
   onRowsPerPageChange,
+  filters,
 }) => {
+  const [exportError, setExportError] = React.useState<string | null>(null);
   const formatNumber = (num: number): string => {
     return num.toLocaleString();
   };
@@ -45,6 +51,38 @@ const POITable: React.FC<POITableProps> = ({
   const formatDate = (dateString: string | null): string => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      setExportError(null);
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
+        }
+      });
+
+      const response = await fetch(`/api/v1/pois/export/csv?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to export data');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = 'poi_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Error exporting data:', err);
+      setExportError('Failed to export data');
+    }
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -83,6 +121,28 @@ const POITable: React.FC<POITableProps> = ({
 
   return (
     <Paper elevation={1}>
+      {exportError && (
+        <Alert severity="error" sx={{ m: 2 }} onClose={() => setExportError(null)}>
+          {exportError}
+        </Alert>
+      )}
+      
+      {/* Table Header with Export Button */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Typography variant="h6" component="h2">
+          POI Data ({data?.total || 0} total)
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          onClick={handleExportCSV}
+          color="primary"
+          size="small"
+        >
+          Export CSV
+        </Button>
+      </Box>
+      
       <TableContainer>
         <Table sx={{ minWidth: 650 }} aria-label="POI table">
           <TableHead>

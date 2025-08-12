@@ -1,43 +1,80 @@
-from pydantic import BaseModel
-from typing import Optional
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, Index
+from sqlalchemy.sql import func
+from app.database import Base
 from datetime import datetime
-from enum import Enum
 
-
-class EntityType(str, Enum):
-    VENUE = "venue"
-
-
-class POI(BaseModel):
-    entity_id: str
-    entity_type: EntityType
-    name: str
-    foot_traffic: int
-    sales: float
-    avg_dwell_time_min: float
-    area_sqft: float
-    ft_per_sqft: float
-    geolocation: str
-    country: str
-    state_code: str
-    state_name: str
-    city: str
-    postal_code: str
-    formatted_city: str
-    street_address: str
-    sub_category: str
-    dma: Optional[int] = None
-    cbsa: Optional[int] = None
-    chain_id: str
-    chain_name: str
-    store_id: Optional[str] = None
-    date_opened: Optional[datetime] = None
-    date_closed: Optional[datetime] = None
+class POIModel(Base):
+    """SQLAlchemy model for POI data storage"""
+    __tablename__ = "pois"
     
-    @property
-    def is_open(self) -> bool:
-        """Determine if the POI is currently open based on date_closed"""
-        return self.date_closed is None
+    # Primary key
+    entity_id = Column(String, primary_key=True, index=True)
     
-    class Config:
-        from_attributes = True
+    # Basic information
+    entity_type = Column(String, nullable=False, default="venue")
+    name = Column(String, nullable=False, index=True)
+    chain_name = Column(String, nullable=False, index=True)
+    chain_id = Column(String, nullable=False)
+    store_id = Column(String, nullable=True)
+    
+    # Location data
+    city = Column(String, nullable=False, index=True)
+    state_code = Column(String, nullable=False, index=True)
+    state_name = Column(String, nullable=False)
+    postal_code = Column(String)
+    formatted_city = Column(String)
+    street_address = Column(Text)
+    geolocation = Column(Text)
+    country = Column(String, default="United States")
+    dma = Column(Integer, nullable=True, index=True)
+    cbsa = Column(Integer, nullable=True)
+    
+    # Metrics
+    foot_traffic = Column(Integer, default=0, index=True)
+    sales = Column(Float, default=0.0)
+    avg_dwell_time_min = Column(Float, default=0.0)
+    area_sqft = Column(Float, default=0.0)
+    ft_per_sqft = Column(Float, default=0.0)
+    
+    # Categories and status
+    sub_category = Column(String, index=True)
+    is_open = Column(Boolean, default=True, index=True)
+    date_opened = Column(DateTime, nullable=True)
+    date_closed = Column(DateTime, nullable=True)
+    
+    # Audit fields
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<POI(id={self.entity_id}, name={self.name}, chain={self.chain_name})>"
+
+    def to_pydantic(self):
+        """Convert SQLAlchemy model to Pydantic POI model"""
+        from app.schemas.poi import POI
+        return POI.from_db_model(self)
+
+# Create additional composite indexes for better query performance
+
+# 1. Common filter combinations
+Index('idx_poi_chain_dma', POIModel.chain_name, POIModel.dma)
+Index('idx_poi_city_state', POIModel.city, POIModel.state_code)
+
+# 2. Search optimization - prefix matching
+Index('idx_poi_search_prefix', POIModel.name, POIModel.chain_name, POIModel.city)
+
+# 3. Analytics queries optimization
+Index('idx_poi_chain_open', POIModel.chain_name, POIModel.is_open)
+Index('idx_poi_analytics', POIModel.chain_name, POIModel.foot_traffic, POIModel.sales)
+
+# 4. Geographic filtering optimization
+Index('idx_poi_geo_filter', POIModel.state_code, POIModel.city, POIModel.dma)
+
+# 5. Performance metrics sorting (for rankings)
+Index('idx_poi_metrics_desc', POIModel.foot_traffic.desc(), POIModel.sales.desc())
+
+# 6. Date-based queries (for temporal analysis)
+Index('idx_poi_dates', POIModel.date_opened, POIModel.date_closed, POIModel.is_open)
+
+# 7. Category analysis
+Index('idx_poi_category_metrics', POIModel.sub_category, POIModel.foot_traffic)

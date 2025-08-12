@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 from app.routers import poi
-from app.services.data_service import DataService
+from app.database import create_tables, get_db
+from app.models.poi import POIModel
 import os
 
 # Initialize FastAPI app
@@ -20,19 +22,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize data service
-csv_path = os.path.join(os.path.dirname(__file__), "..", "Bigbox Stores Metrics.csv")
-data_service = DataService(csv_path)
-
-# Inject data service into router
-poi.data_service = data_service
+# Database initialization
+@app.on_event("startup")
+def startup_event():
+    """Initialize database on startup"""
+    create_tables()
+    print("Database tables created/verified")
 
 # Include routers
 app.include_router(poi.router)
 
 
 @app.get("/")
-async def root():
+def root():
     return {
         "message": "Welcome to Placer.ai POI Analytics API",
         "version": "1.0.0",
@@ -52,8 +54,22 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy", "data_loaded": len(data_service.df) if data_service.df is not None else 0}
+def health_check(db: Session = Depends(get_db)):
+    """Health check endpoint with database status"""
+    try:
+        # Check database connection and count POIs
+        poi_count = db.query(POIModel).count()
+        return {
+            "status": "healthy",
+            "database": "connected", 
+            "data_loaded": poi_count
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": str(e)
+        }
 
 
 if __name__ == "__main__":

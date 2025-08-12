@@ -4,7 +4,6 @@ import {
   Paper,
   Typography,
   Grid,
-  Button,
   Alert,
 } from '@mui/material';
 import {
@@ -22,7 +21,6 @@ import {
 } from 'recharts';
 import {
   Analytics as AnalyticsIcon,
-  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { poiApi } from '../services/api';
 import { Filters } from '../types/poi';
@@ -87,36 +85,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ filters }) => {
     }
   };
 
-  const handleExportCSV = async () => {
-    try {
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          params.append(key, value.toString());
-        }
-      });
 
-      const response = await fetch(`/api/v1/pois/export/csv?${params.toString()}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to export data');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'poi_export.csv';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err) {
-      console.error('Error exporting data:', err);
-      setError('Failed to export data');
-    }
-  };
 
   const formatNumber = (num: number): string => {
     if (num >= 1000000) {
@@ -143,21 +112,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ filters }) => {
         </Alert>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <AnalyticsIcon sx={{ mr: 1, color: 'primary.main' }} />
-          <Typography variant="h5" component="h2">
-            Analytics & Insights
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<DownloadIcon />}
-          onClick={handleExportCSV}
-          color="primary"
-        >
-          Export CSV
-        </Button>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <AnalyticsIcon sx={{ mr: 1, color: 'primary.main' }} />
+        <Typography variant="h5" component="h2">
+          Analytics & Insights
+        </Typography>
       </Box>
 
       <Grid container spacing={3}>
