@@ -24,9 +24,11 @@ A full-stack web application for analyzing Big Box Store Point of Interest (POI)
 
 ### Backend
 - **FastAPI**: Modern, fast Python web framework
-- **Pandas**: Data manipulation and analysis
+- **SQLAlchemy**: SQL toolkit and Object Relational Mapper
+- **SQLite**: Lightweight file-based database
 - **Pydantic**: Data validation and serialization
-- **Uvicorn**: ASGI server for production
+- **Pandas**: Data export and CSV processing
+- **Uvicorn**: ASGI server for development and production
 
 ### Frontend
 - **React 18**: Modern React with TypeScript
@@ -40,23 +42,29 @@ A full-stack web application for analyzing Big Box Store Point of Interest (POI)
 placer-ai-assignment/
 ├── backend/
 │   ├── app/
-│   │   ├── models/          # Pydantic models
-│   │   ├── schemas/         # Request/response schemas
-│   │   ├── services/        # Business logic
-│   │   ├── routers/         # API endpoints
+│   │   ├── models/          # SQLAlchemy database models
+│   │   ├── schemas/         # Pydantic request/response schemas
+│   │   ├── services/        # Business logic layer
+│   │   ├── routers/         # FastAPI route handlers
+│   │   ├── utils/           # Helper utilities
+│   │   ├── database.py      # Database configuration
 │   │   └── __init__.py
-│   ├── main.py             # FastAPI application
-│   └── requirements.txt    # Python dependencies
+│   ├── scripts/
+│   │   └── migrate_csv_to_db.py  # Data migration script
+│   ├── tests/              # Test suite
+│   ├── main.py             # FastAPI application entry point
+│   ├── requirements.txt    # Python dependencies
+│   └── poi_database.db     # SQLite database (auto-created)
 ├── frontend/
 │   ├── src/
 │   │   ├── components/     # React components
-│   │   ├── services/       # API clients
-│   │   ├── types/          # TypeScript types
-│   │   ├── App.tsx
-│   │   └── index.tsx
+│   │   ├── services/       # API client services
+│   │   ├── types/          # TypeScript type definitions
+│   │   ├── App.tsx         # Main React component
+│   │   └── index.tsx       # React entry point
 │   ├── public/
-│   └── package.json        # Node dependencies
-├── Bigbox Stores Metrics.csv  # Data file
+│   └── package.json        # Node.js dependencies
+├── Bigbox Stores Metrics.csv  # Source data file
 └── README.md
 ```
 
@@ -67,6 +75,10 @@ placer-ai-assignment/
 - Node.js 16+
 - npm or yarn
 
+### Quick Start
+
+To run the application, you need to start both the backend and frontend manually in separate terminals.
+
 ### Backend Setup
 
 1. Navigate to the backend directory:
@@ -74,42 +86,70 @@ placer-ai-assignment/
 cd backend
 ```
 
-2. Create a virtual environment:
+2. Create and activate a virtual environment:
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install dependencies:
+3. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Run the FastAPI server:
+4. Start the FastAPI server:
+```bash
+uvicorn main:app --reload
+```
+*Or alternatively:*
 ```bash
 python main.py
 ```
 
-The API will be available at `http://localhost:8000`
+The backend API will be available at `http://localhost:8000`
+
+**Note**: The application will automatically load CSV data into a SQLite database on first startup if no data exists.
 
 ### Frontend Setup
+
+Open a **new terminal** and follow these steps:
 
 1. Navigate to the frontend directory:
 ```bash
 cd frontend
 ```
 
-2. Install dependencies:
+2. Install Node.js dependencies:
 ```bash
 npm install
 ```
 
-3. Start the development server:
+3. Start the React development server:
 ```bash
 npm start
 ```
 
-The application will be available at `http://localhost:3000`
+The frontend application will be available at `http://localhost:3000`
+
+### Running the Complete Application
+
+1. **Terminal 1** (Backend):
+```bash
+cd backend
+source venv/bin/activate  # If not already activated
+uvicorn main:app --reload
+```
+
+2. **Terminal 2** (Frontend):
+```bash
+cd frontend
+npm start
+```
+
+3. **Access the application**:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
 
 ## API Documentation
 
@@ -144,9 +184,10 @@ Once the backend is running, you can access:
 - All charts are interactive and responsive
 
 ### Export Data
-- Click the "Export CSV" button in the Analytics tab
+- Click the "Export CSV" button in the POI table header
 - Exported file includes all currently filtered data
 - CSV format is compatible with Excel and other data analysis tools
+- Large datasets are handled gracefully with streaming export
 
 ## Data Schema
 

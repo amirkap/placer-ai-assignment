@@ -54,27 +54,9 @@ class POIModel(Base):
         from app.schemas.poi import POI
         return POI.from_db_model(self)
 
-# Create additional composite indexes for better query performance
+# Composite indexes for better query performance
 
-# 1. Common filter combinations
-Index('idx_poi_chain_dma', POIModel.chain_name, POIModel.dma)
-Index('idx_poi_city_state', POIModel.city, POIModel.state_code)
-
-# 2. Search optimization - prefix matching
-Index('idx_poi_search_prefix', POIModel.name, POIModel.chain_name, POIModel.city)
-
-# 3. Analytics queries optimization
-Index('idx_poi_chain_open', POIModel.chain_name, POIModel.is_open)
-Index('idx_poi_analytics', POIModel.chain_name, POIModel.foot_traffic, POIModel.sales)
-
-# 4. Geographic filtering optimization
-Index('idx_poi_geo_filter', POIModel.state_code, POIModel.city, POIModel.dma)
-
-# 5. Performance metrics sorting (for rankings)
-Index('idx_poi_metrics_desc', POIModel.foot_traffic.desc(), POIModel.sales.desc())
-
-# 6. Date-based queries (for temporal analysis)
-Index('idx_poi_dates', POIModel.date_opened, POIModel.date_closed, POIModel.is_open)
-
-# 7. Category analysis
-Index('idx_poi_category_metrics', POIModel.sub_category, POIModel.foot_traffic)
+# Core filter combinations from assignment requirements
+Index('idx_poi_chain_dma', POIModel.chain_name, POIModel.dma)        # Chain + Market area
+Index('idx_poi_city_state', POIModel.city, POIModel.state_code)      # Location filtering
+Index('idx_poi_chain_open', POIModel.chain_name, POIModel.is_open)   # Chain + Status

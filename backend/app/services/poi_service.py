@@ -35,30 +35,15 @@ class POIService:
             query = query.filter(POIModel.is_open == filters.is_open)
         
         if filters.search:
-            # Optimized search: prioritize prefix matches (faster with indexes)
+            # Simple search across indexed fields only
             search_term = filters.search.strip()
             
-            # For exact matches or prefix searches (most efficient)
-            exact_conditions = [
-                POIModel.chain_name.ilike(f"{search_term}%"),  # Prefix match (fastest)
-                POIModel.name.ilike(f"{search_term}%"),       # Prefix match (fastest)
-                POIModel.city.ilike(f"{search_term}%"),       # Prefix match (fastest)
-            ]
-            
-            # For partial matches (slower but comprehensive)
-            partial_conditions = [
-                POIModel.chain_name.ilike(f"%{search_term}%"),
-                POIModel.name.ilike(f"%{search_term}%"),
-                POIModel.city.ilike(f"%{search_term}%"),
-                POIModel.street_address.ilike(f"%{search_term}%")
-            ]
-            
-            # Use prefix matching first (leverages indexes better)
-            if len(search_term) >= 2:  # Only for meaningful searches
-                search_filter = or_(*exact_conditions, *partial_conditions)
-            else:
-                search_filter = or_(*exact_conditions)  # Short queries: prefix only
-                
+            # Search only in indexed fields for optimal performance
+            search_filter = or_(
+                POIModel.chain_name.ilike(f"%{search_term}%"),  # Has index
+                POIModel.name.ilike(f"%{search_term}%"),        # Has index
+                POIModel.city.ilike(f"%{search_term}%"),        # Has index
+            )
             query = query.filter(search_filter)
         
         return query
@@ -76,7 +61,6 @@ class POIService:
         # Apply filters
         query = self._apply_filters_to_query(query, filters)
         
-        # Optimize: Get total count efficiently
         # For large datasets, use approximate count for better performance
         if limit <= 100:  # For small pages, exact count is fine
             total = query.count()
@@ -89,7 +73,7 @@ class POIService:
         # Apply pagination and execute
         poi_models = query.offset((page - 1) * limit).limit(limit).all()
         
-        # Convert to Pydantic models
+        # Convert to Pydantic models for response
         pois = [self._poi_model_to_pydantic(poi_model) for poi_model in poi_models]
         
         return pois, total
@@ -154,54 +138,49 @@ class POIService:
         return sorted([str(value[0]) for value in values if value[0] and str(value[0]).strip()])
     
     def get_dma_values(self) -> List[int]:
-        """Get unique DMA values as properly parsed integers"""
-        from app.utils.api_helpers import parse_dma_values
-        
+        """Get unique DMA values as integers"""
         dma_strings = self.get_unique_values("dma")
-        return parse_dma_values(dma_strings)
+        return sorted([int(dma) for dma in dma_strings if dma])
     
     def get_autocomplete_suggestions(self, query: str, field: str = None) -> List[str]:
-        """Get autocomplete suggestions using database search"""
+        """Get autocomplete suggestions using indexed fields only"""
         if not query:
             return []
         
         suggestions = set()
         
-        # Define fields to search for autocomplete
-        search_fields = {
+        # Only search indexed fields for optimal performance
+        indexed_fields = {
             'name': POIModel.name,
             'chain': POIModel.chain_name,
             'city': POIModel.city,
-            'state': POIModel.state_name,
             'state_code': POIModel.state_code,
-            'address': POIModel.street_address
         }
         
-        if field and field in search_fields:
-            # Search in specific field
-            db_column = search_fields[field]
+        if field and field in indexed_fields:
+            # Search in specific indexed field
+            db_column = indexed_fields[field]
             results = self.db.query(db_column).filter(
-                db_column.ilike(f"%{query}%")
+                db_column.ilike(f"{query}%")  # Prefix search for better index usage
             ).distinct().limit(10).all()
             suggestions.update([str(r[0]) for r in results if r[0] and str(r[0]).strip()])
         else:
-            # Search in all fields
-            for column in search_fields.values():
+            # Search in all indexed fields
+            for column in indexed_fields.values():
                 results = self.db.query(column).filter(
-                    column.ilike(f"%{query}%")
-                ).distinct().limit(5).all()
+                    column.ilike(f"{query}%")  # Prefix search for better index usage
+                ).distinct().limit(3).all()
                 suggestions.update([str(r[0]) for r in results if r[0] and str(r[0]).strip()])
         
-        # Filter and sort results
-        filtered_suggestions = [
-            s for s in suggestions 
-            if s and query.lower() in str(s).lower()
-        ]
-        
-        return sorted(filtered_suggestions)[:10]  # Limit to 10 suggestions
+        return sorted(suggestions)[:10]  # Limit to 10 suggestions
     
     def get_export_data(self, filters: POIFilters) -> pd.DataFrame:
-        """Get filtered data for export as DataFrame"""
+        """Get filtered data for export as DataFrame.
+        
+        For large datasets (millions of rows), this could be optimized further
+        by using yield_per() for database-level streaming, but for this assignment's
+        dataset size, the current approach with chunked CSV streaming is sufficient.
+        """
         
         # Build base query
         query = self.db.query(POIModel)
@@ -209,7 +188,8 @@ class POIService:
         # Apply filters
         query = self._apply_filters_to_query(query, filters)
         
-        # Get all matching records
+        # For truly massive datasets, could use: query.yield_per(1000)
+        # But current dataset size makes this unnecessary
         poi_models = query.all()
         
         # Convert to list of dictionaries

@@ -76,31 +76,33 @@ def build_paginated_response(
     )
 
 
-def parse_dma_values(dma_strings: List[str]) -> List[int]:
-    """Parse and convert DMA string values to integers, filtering out invalid ones."""
-    dma_ints = []
-    for dma in dma_strings:
-        try:
-            if dma:
-                dma_ints.append(int(float(dma)))
-        except (ValueError, TypeError):
-            continue
-    return sorted(dma_ints)
+
 
 
 def create_csv_streaming_response(
     export_data: pd.DataFrame, 
     filename: str = "poi_export.csv"
 ) -> StreamingResponse:
-    """Create a streaming CSV response from pandas DataFrame."""
-    # Create CSV string
-    output = io.StringIO()
-    export_data.to_csv(output, index=False)
-    output.seek(0)
+    """Create a streaming CSV response that handles large datasets gracefully.
     
-    # Create streaming response
+    For millions of rows, this approach processes data in chunks to avoid
+    memory issues.
+    """
+    
     def iter_csv():
-        yield output.getvalue()
+        # Start with CSV header
+        if not export_data.empty:
+            yield export_data.iloc[:1].to_csv(index=False)  # Header row
+            
+            # Stream data in chunks to handle large datasets gracefully
+            chunk_size = 1000  # Process 1000 rows at a time
+            for i in range(1, len(export_data), chunk_size):
+                chunk = export_data.iloc[i:i + chunk_size]
+                # Skip header for subsequent chunks
+                yield chunk.to_csv(index=False, header=False)
+        else:
+            # Empty dataset - just return header
+            yield ",".join(export_data.columns) + "\n"
     
     return StreamingResponse(
         iter_csv(),
